@@ -1,0 +1,28 @@
+services:
+  mongodb:
+    image: mongo:7
+    ports:
+      - "27018:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mongosh",
+          "mongodb://admin:admin123@localhost:27017/admin?authSource=admin",
+          "--quiet",
+          "--eval",
+          "db.adminCommand({ ping: 1 }).ok"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    volumes:
+      - ./scripts:/workshop/scripts:ro
+      - mongo_workshop_data:/data/db
+
+volumes:
+  mongo_workshop_data:
