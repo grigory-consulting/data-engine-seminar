@@ -1,0 +1,16 @@
+services:
+  notebook:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: spark-notebook
+    working_dir: /workspace/notebooks
+    environment:
+      SPARK_MASTER: local[*]
+      PYSPARK_PYTHON: python3
+      PYSPARK_DRIVER_PYTHON: python3
+      SPARK_LOCAL_IP: 127.0.0.1
+    ports:
+      - "8888:8888"
+    volumes:
+      - ./:/workspace
