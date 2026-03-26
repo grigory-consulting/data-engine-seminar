@@ -1,0 +1,66 @@
+services:
+  mlflow:
+    build: .
+    command: >
+      /bin/sh -c "mkdir -p /mlflow-data/artifacts &&
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri sqlite:////mlflow-data/mlflow.db
+      --default-artifact-root file:///mlflow-data/artifacts"
+    ports:
+      - "${MLFLOW_HOST_PORT:-5001}:5000"
+    environment:
+      GIT_PYTHON_REFRESH: quiet
+    volumes:
+      - mlflow-data:/mlflow-data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/ >/dev/null 2>&1"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  spark-mllib-trainer:
+    build: .
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_EXPERIMENT_NAME: spark-mllib-demo
+      PYSPARK_PIN_THREAD: "false"
+      SPARK_LOCAL_IP: 127.0.0.1
+      GIT_PYTHON_REFRESH: quiet
+    volumes:
+      - mlflow-data:/mlflow-data
+    command: python train_model.py
+
+  jupyterlab:
+    build: .
+    depends_on:
+      mlflow:
+        condition: service_healthy
+    working_dir: /app
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow:5000
+      MLFLOW_EXPERIMENT_NAME: spark-mllib-demo
+      PYSPARK_PIN_THREAD: "false"
+      SPARK_LOCAL_IP: 127.0.0.1
+      GIT_PYTHON_REFRESH: quiet
+    ports:
+      - "${JUPYTER_HOST_PORT:-8889}:8888"
+    volumes:
+      - ./:/app
+      - mlflow-data:/mlflow-data
+    command: >
+      jupyter lab
+      --ip=0.0.0.0
+      --port=8888
+      --no-browser
+      --allow-root
+      --ServerApp.token=
+      --ServerApp.password=
+      --ServerApp.root_dir=/app
+
+volumes:
+  mlflow-data:
