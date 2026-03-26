@@ -1,2 +1,5 @@
 airflow/logs/
 airflow/dags/__pycache__/
+apache_spark/notebooks/data/
+apache_spark/notebooks/.ipynb_checkpoints/spark_tutorial-checkpoint.ipynb
+mlflow_tutorial/.ipynb_checkpoints/train_model-checkpoint.ipynb
