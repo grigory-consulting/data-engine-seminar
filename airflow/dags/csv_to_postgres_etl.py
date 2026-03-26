@@ -289,7 +289,7 @@ with DAG(
     description= "CSV sensor data + pandas -> Postgres",
     start_date=datetime(2025,1,1),
     schedule="@hourly",
-    catchup=False, 
+    catchup=True, 
     tags =["csv", "pandas"], 
 ) as dag:
     # Task registrieren

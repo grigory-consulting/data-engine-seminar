@@ -6,13 +6,13 @@ from airflow.sensors.external_task import ExternalTaskSensor
 
 # DAG-Konfiguration
 OWNER = "g.devadze"
-DAG_ID = "fct_avg_day_earthquake"
+DAG_ID = "fct_count_day_earthquake"
 
 # Verwendete Tabellen im DAG
 LAYER = "mart"
 SOURCE = "earthquake"
 SCHEMA = "dm"
-TARGET_TABLE = "fct_avg_day_earthquake"
+TARGET_TABLE = "fct_count_day_earthquake"
 
 # DWH
 PG_CONNECT = "postgres_dwh"
@@ -68,7 +68,7 @@ with DAG(
         CREATE TABLE IF NOT EXISTS {SCHEMA}.{TARGET_TABLE}
         (
             date date,
-            avg double precision
+            count bigint
         )
         """,
     )
@@ -90,7 +90,7 @@ with DAG(
         CREATE TABLE stg."tmp_{TARGET_TABLE}_{{{{ data_interval_start.format('YYYY-MM-DD') }}}}" AS
         SELECT
             time::date AS date,
-            avg(mag::float)
+            count(*)
         FROM
             ods.fct_earthquake
         WHERE
