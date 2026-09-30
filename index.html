@@ -1,0 +1,3896 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+
+    <title>Data Engineering</title>
+    <link rel="stylesheet" href="dist/reset.css">
+    <link rel="stylesheet" href="dist/reveal.css" />
+    <link rel="stylesheet" href="css/slides-extended.css" />
+    <link rel="stylesheet" href="dist/theme/white.css" id="theme" />
+    <link rel="stylesheet" href="plugin/customcontrols/style.css">
+
+
+    <link rel="stylesheet" href="data-engineering.css" />
+
+    <script defer src="dist/fontawesome/all.min.js"></script>
+
+    <script type="text/javascript">
+        function pageInIframe() {
+            return (window.location !== window.parent.location);
+        }
+
+        let forgetPop = true;
+        function onPopState(event) {
+            if(forgetPop){
+                forgetPop = false;
+            } else if( pageInIframe()) {
+                parent.postMessage(event.target.location.href, "app://obsidian.md");
+            }
+        }
+        window.onpopstate = onPopState;
+        window.onmessage = event => {
+            if(event.data == "reload"){
+                window.document.location.reload();
+            }
+            forgetPop = true;
+        }
+
+        function fitElements() {
+            const itemsToFit = document.getElementsByClassName('fitText');
+            for (const item in itemsToFit) {
+                if (Object.hasOwnProperty.call(itemsToFit, item)) {
+                    const element = itemsToFit[item];
+                    fitElement(element, 1, 1000);
+                    element.classList.remove('fitText');
+                }
+            }
+        }
+
+        function fitElement(element, start, end) {
+
+            let size = (end + start) / 2;
+            element.style.fontSize = `${size}px`;
+
+            if (Math.abs(start - end) < 1) {
+                while (element.scrollHeight > element.offsetHeight) {
+                    size--;
+                    element.style.fontSize = `${size}px`;
+                }
+                return;
+            }
+
+            if (element.scrollHeight > element.offsetHeight) {
+                fitElement(element, start, size);
+            } else {
+                fitElement(element, size, end);
+            }
+        }
+
+        document.onreadystatechange = () => {
+            fitElements();
+            if (document.readyState === 'complete') {
+                if (pageInIframe() && window.location.href.indexOf("?export") != -1){
+                    parent.postMessage(event.target.location.href, "app://obsidian.md");
+                }
+                if (window.location.href.indexOf("print-pdf") != -1){
+                    let stateCheck = setInterval(() => {
+                        clearInterval(stateCheck);
+                        window.print();
+                    }, 250);
+                }
+            }
+        };
+    </script>
+</head>
+
+<body>
+    <div class="reveal">
+        <div class="slides"><section  data-markdown><script type="text/template"><!-- .slide: class="titleslide drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# Data Engineering
+### Datenmodellierung, NoSQL, Data Warehouse und Lakehouse, ETL-Pipelines und Apache Spark
+
+Dr.-Ing. Grigory Devadze
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Was Sie mitnehmen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Die **Rolle des Data Engineers** und die Bausteine einer Datenplattform einordnen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Relationale Datenmodelle vom **ER-Modell** bis zum physischen Schema entwerfen und **normalisieren** 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**MongoDB** als Dokumentendatenbank einsetzen und gegen relationale Systeme abwägen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->**Data Warehouse, Data Lake und Lakehouse** unterscheiden und Objektspeicher wie **S3** einordnen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->**ETL-Pipelines** planen: Ingestion, Transformation, Orchestrierung und Betrieb 
+- &shy;<!-- .element: class="fragment" data-fragment-index="6" -->**Apache Spark** mit seinen Komponenten einordnen und typische Stolperfallen kennen
+</div></script></section><section  data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Ablauf
+
+| Teil | Thema |
+|------|-------|
+| 1 | Einführung in Data Engineering |
+| 2 | Datenmodellierung und Normalisierung |
+| 3 | NoSQL und MongoDB |
+| 4 | Data Warehouse, Data Lake und Lakehouse |
+| 5 | ETL-Pipelines: Grundlagen |
+| 6 | Data Ingestion |
+| 7 | Data Transformation |
+| 8 | Orchestrierung |
+| 9 | Betrieb, Stabilität und Kosten |
+| 10 | Apache Spark |
+</div></script></section><section ><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" data-background-color="#183b66" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# Teil 1: Einführung in Data Engineering
+
+Rolle, Plattformarchitektur und Abgrenzung zu Data Science.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Was ist Data Engineering?
+
+Data Engineering ist der Aufbau und Betrieb von Systemen, die Daten:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->erfassen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->speichern, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->transformieren, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->verlässlich für Analyse und Produkte bereitstellen. 
+
+<div class="fragment" data-fragment-index="5">
+
+Kernidee:
+
+- **Aus Rohdaten werden nutzbare Datenprodukte.**
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Warum Data Engineering wichtig ist
+
+Ohne Data Engineering entstehen häufig:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->inkonsistente Kennzahlen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->manuelle Excel-Prozesse, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->langsame oder fehleranfällige Reports, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->geringe Vertrauenswürdigkeit von Daten. 
+
+<div class="fragment" data-fragment-index="5">
+
+Mit Data Engineering:
+
+- skalierbare und reproduzierbare Datenflüsse,
+- bessere Entscheidungsqualität,
+- schnellere Time-to-Insight.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Rolle des Data Engineers: Überblick
+
+Ein Data Engineer verantwortet typischerweise:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Datenintegration aus verschiedenen Quellen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Entwicklung von ETL/ELT-Pipelines, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Datenmodellierung für Analytics, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Betrieb, Monitoring und Optimierung, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->Datenqualität und Governance-Bausteine.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Typische Aufgaben im Alltag
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Quellsysteme anbinden (API, DB, Streams) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Ingestion und Transformation implementieren 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Datenmodelle (z. B. Fact/Dimension) entwickeln 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Ladeprozesse orchestrieren/automatisieren 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->Fehleranalyse, Incident-Behebung, Performance-Tuning
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Skills eines Data Engineers
+
+Technisch:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->SQL, Python, Datenmodellierung 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Cloud-/Storage-Konzepte, verteilte Verarbeitung 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Orchestrierung, CI/CD, Monitoring 
+
+<div class="fragment" data-fragment-index="4">
+
+Arbeitsweise:
+
+- systemisches Denken,
+- saubere Dokumentation,
+- Zusammenarbeit mit Analytics, BI und Data Science.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Architektur von Datenplattformen
+
+<!-- diagramm: d_de_plattform | data flow | Quellen über Ingestion, Raw und Transform in den integrierten Core, daraus Marts für BI und Features für DS/ML -->
+<img src="figs/d_de_plattform.png" alt="" style="object-fit: scale-down">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Architektur-Bausteine erklärt
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Ingestion:** Daten zuverlässig einsammeln (batch/stream) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Storage:** Rohdaten + kuratierte Daten speichern 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**Transformation:** fachliche Logik, Harmonisierung, Anreicherung 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->**Serving Layer:** Daten für BI, APIs, ML nutzbar machen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->**Observability:** Monitoring, Logging, Data Quality
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Batch vs. Streaming in der Plattform
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Batch:** periodische Verarbeitung, robust und planbar 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Streaming:** ereignisnahe Verarbeitung, niedrige Latenz 
+
+<div class="fragment" data-fragment-index="3">
+
+Praxis:
+
+- viele Plattformen nutzen hybride Ansätze,
+- Wahl hängt von Business-Anforderung an Datenfrische ab.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Data Engineering vs. Data Science
+
+| Aspekt | Data Engineering | Data Science |
+|---|---|---|
+| Fokus | Datenbereitstellung & Plattform | Analyse, Modelle, Erkenntnisse |
+| Kernfrage | „Wie liefern wir verlässliche Daten?“ | „Was sagen die Daten voraus/aus?“ |
+| Artefakte | Pipelines, Modelle, Datenprodukte | Features, Experimente, Modelle |
+| Erfolgskriterium | Stabilität, Qualität, Skalierung | Modellgüte, Business-Impact |
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Zusammenarbeit DE + DS (Idealbild)
+
+<!-- diagramm: d_de_ds_zyklus | loop | Data Engineering liefert Feature-Daten an Data Science, Modelle und Insights gehen ins Produkt, Feedback und neue Daten zurück an Data Engineering -->
+<img src="figs/d_de_ds_zyklus.png" alt="" style="object-fit: scale-down">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Häufige Missverständnisse
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->„Data Engineer = nur ETL-Skripte“ 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->„Data Science braucht keine Plattformdisziplin“ 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->„Mehr Tools lösen automatisch Datenprobleme“
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Real Cases aus der Praxis
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->E-Commerce: Daily KPI-Reports auf nahezu Echtzeit umgestellt. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Industrie/IoT: Sensordaten von Batch auf Streaming umgestellt. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Finanz/Compliance: Data Lineage und Audit-Reporting stabilisiert.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Case 1: E-Commerce (Umsatz- und Funnel-Reporting)
+
+Ausgangslage:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->KPI-Reports kamen nur 1x täglich. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Marketing und Ops reagierten mit starker Verzögerung.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Case 1: E-Commerce (Umsatz- und Funnel-Reporting)
+
+Data-Engineering-Maßnahmen:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Event-Ingestion + inkrementelle Transformationen. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Kuratierte Marts für Checkout/Funnel/Retention. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Data-Quality-Checks auf Pflichtfelder und Duplikate. 
+
+<div class="fragment" data-fragment-index="4">
+
+Ergebnis:
+
+- Reporting-Latenz von \~24h auf <30min gesenkt.
+- Schnellere Kampagnenanpassungen und weniger Fehlentscheidungen.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Case 2: IoT/Produktion (Anomalie-Erkennung)
+
+Ausgangslage:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Maschinendaten wurden nur als Tagesbatch verarbeitet. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Störungen wurden oft erst im Nachhinein erkannt.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Case 2: IoT/Produktion (Anomalie-Erkennung)
+
+Data-Engineering-Maßnahmen:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Streaming-Pipeline mit Fenster-Aggregationen. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Trennung in Raw, Curated und Alert-Serving-Layer. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Monitoring für Verzögerung, Ausfallrate und Datenlücken. 
+
+<div class="fragment" data-fragment-index="4">
+
+Ergebnis:
+
+- Frühere Erkennung von Grenzwertverletzungen.
+- Weniger ungeplante Stillstände und bessere Wartungsplanung.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Case 3: Finance/Compliance (Audit und Nachvollziehbarkeit)
+
+Ausgangslage:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Reports wurden aus vielen manuellen Quellen zusammengeführt. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Hoher Abstimmungsaufwand bei Audit-Anfragen.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Case 3: Finance/Compliance (Audit und Nachvollziehbarkeit)
+
+Data-Engineering-Maßnahmen:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Standardisierte Transformationslogik mit versionierten Pipelines. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Lineage von Quelle bis Kennzahl dokumentiert. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Reproduzierbare Monats-Snapshots für Audit-Trails. 
+
+<div class="fragment" data-fragment-index="4">
+
+Ergebnis:
+
+- Deutlich weniger manuelle Nacharbeit.
+- Schnellere und belastbare Antworten für Revision/Compliance.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Best Practices für den Einstieg
+
+1. &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Erst Datenmodell klären, dann bauen. 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Pipeline-Tests und Datenqualitätschecks früh einbauen. 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Ownership für Tabellen/Produkte definieren. 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Monitoring/Latenz/Fehlerquoten transparent machen. 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="5" -->Dokumentation als Teil der Lieferung behandeln.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Zusammenfassung
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Data Engineering schafft die technische Grundlage für datengetriebene Entscheidungen. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Data Engineers bauen und betreiben Datenplattformen als verlässliche Produkte. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Gute Plattformarchitektur verbindet Quellen, Transformation und Konsum klar. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Data Engineering und Data Science sind komplementär und wirken am stärksten gemeinsam.
+</div></script></section></section><section ><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" data-background-color="#183b66" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# Teil 2: Datenmodellierung und Normalisierung
+
+Vom konzeptionellen über den logischen zum physischen Entwurf, dann die Normalformen 1NF bis 3NF.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Warum Datenmodellierung entscheidend ist
+
+Ein gutes Datenmodell sorgt für:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->konsistente Daten, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->klare Geschäftslogik, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->wartbare Systeme, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->bessere Query-Performance.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Häufige Folgen eines schlechten Datenmodells
+
+Ein schlechtes Datenmodell führt oft zu:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Redundanz, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->widersprüchlichen Daten, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->teuren Workarounds in Abfragen.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Stadien der Datenbankprojektierung
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Konzeptioneller Entwurf** (oder: fachliches Datenmodell) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Logischer Entwurf** 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**Physischer Entwurf**
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Konzeptioneller Entwurf
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Aufbau eines semantischen Modells der Fachdomäne, also eines Informationsmodells auf höchster Abstraktionsebene. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Ohne Orientierung an einer konkreten Datenbanksoftware oder einem bestimmten Datenmodell. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Beschreibung der Informationsobjekte bzw. Fachbegriffe und der Beziehungen zwischen ihnen. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Beschreibung von Integritätsanforderungen: zulässige Datenwerte und zulässige Beziehungen zwischen Daten.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Entity-Relationship-Modell (ER-Modell)
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Das **Entität-Beziehung-Modell** (engl. *Entity-Relationship Model*) ist ein Modell der Fachdomäne. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Es dient dazu, die **Semantik der Fachdomäne** auf der **höchsten Abstraktionsebene** darzustellen. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Im Fokus stehen Entitäten und die Beziehungen zwischen Entitäten.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Entität
+
+<!-- diagramm: d_er_entitaet | er | Entität Student als Rechteck mit Namen und Attributen, Schlüssel mit #, Verweis mit Pfeil -->
+<img src="figs/d_er_entitaet.png" alt="" style="object-fit: scale-down">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Beziehungen 1:1 (optional/pflicht)
+
+<!-- diagramm: d_er_1zu1 | er | Vier Varianten einer 1:1-Beziehung zwischen A und B mit 0..1 oder 1..1 an beiden Enden -->
+<img src="figs/d_er_1zu1.png" alt="" style="object-fit: scale-down">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Beziehungen 1:n (optional/pflicht)
+
+<!-- diagramm: d_er_1zun | er | Vier Varianten einer 1:n-Beziehung zwischen A und B mit optionaler oder verpflichtender Teilnahme -->
+<img src="figs/d_er_1zun.png" alt="" style="object-fit: scale-down">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Beziehungen n:m (optional/pflicht)
+
+<!-- diagramm: d_er_nzum | er | Vier Varianten einer n:m-Beziehung zwischen A und B mit optionaler oder verpflichtender Teilnahme -->
+<img src="figs/d_er_nzum.png" alt="" style="object-fit: scale-down">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Beispiel: Fakultät, Gruppe, Student
+
+<!-- diagramm: d_er_fakultaet | er | Fakultät 0..n zu 1..1 Gruppe, Gruppe 0..n zu 1..1 Student -->
+<img src="figs/d_er_fakultaet.png" alt="" style="object-fit: scale-down">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Interpretation: Fakultät, Gruppe, Student
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Fakultät - Gruppe**: Eine Fakultät hat `0..n` Gruppen, eine Gruppe gehört zu `1..1` Fakultät. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Gruppe - Student**: Eine Gruppe hat `0..n` Studierende, ein Student gehört zu `1..1` Gruppe.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Beispiel: Abteilung, Mitarbeiter, Projekt
+
+<!-- diagramm: d_er_abteilung | er | Abteilung 0..n zu 1..1 Mitarbeiter, Mitarbeiter 0..n zu 0..n Projekt -->
+<img src="figs/d_er_abteilung.png" alt="" style="object-fit: scale-down">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Interpretation: Abteilung, Mitarbeiter, Projekt
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Abteilung - Mitarbeiter**: Eine Abteilung hat `0..n` Mitarbeiter, ein Mitarbeiter gehört zu `1..1` Abteilung. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Mitarbeiter - Projekt**: Ein Mitarbeiter arbeitet an `0..n` Projekten, ein Projekt hat `0..n` Mitarbeiter.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Logischer Entwurf
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Erstellung eines Datenbankschemas auf Basis eines konkreten Datenmodells, z. B. des relationalen Datenmodells. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Für das relationale Modell ist das logische Modell eine Menge von Relationsschemata, meist mit Primärschlüsseln sowie Beziehungen über Fremdschlüssel. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->In der Phase des logischen Entwurfs wird die Spezifik des gewählten Datenmodells berücksichtigt, die Spezifik eines konkreten DBMS kann jedoch noch unberücksichtigt bleiben.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Beispiel (Fakultät, Gruppe, Student)
+
+```text
+FAKULTAET(
+  fakultaet_id PK,
+  name
+)
+
+GRUPPE(
+  gruppe_id PK,
+  bezeichnung,
+  fakultaet_id FK -> FAKULTAET.fakultaet_id
+)
+
+STUDENT(
+  student_id PK,
+  vorname,
+  nachname,
+  gruppe_id FK -> GRUPPE.gruppe_id
+)
+```
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="code-dicht drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Beispiel (Abteilung, Mitarbeiter, Projekt)
+
+```text
+ABTEILUNG(
+  abteilung_id PK,
+  name
+)
+
+MITARBEITER(
+  mitarbeiter_id PK,
+  vorname,
+  nachname,
+  abteilung_id FK -> ABTEILUNG.abteilung_id
+)
+
+PROJEKT(
+  projekt_id PK,
+  titel
+)
+
+MITARBEITER_PROJEKT(
+  mitarbeiter_id FK -> MITARBEITER.mitarbeiter_id,
+  projekt_id FK -> PROJEKT.projekt_id,
+  rolle,
+  PK (mitarbeiter_id, projekt_id)
+)
+```
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Physischer Entwurf
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Umsetzung des Datenbankschemas für eine **konkrete** DBMS-Plattform. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Berücksichtigt die Spezifika des gewählten Systems, zum Beispiel: 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Namenskonventionen und Namensgrenzen für Datenbankobjekte. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Unterstützte Datentypen und deren systemabhängige Eigenschaften.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Physischer Entwurf
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Auswahl von Speicher- und Zugriffsverfahren. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Aufteilung der Datenbank auf Dateien, Tablespaces und Geräte. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Verteilung und Optimierung von Datenzugriffspfaden. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Erstellung und Feinabstimmung von Indizes. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->Kurz: alles, was an das konkrete DBMS gebunden ist.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="code-dicht drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Physischer Entwurf
+
+```sql
+CREATE TABLE faculty (
+ id int(11) unsigned NOT NULL AUTO_INCREMENT,
+ name varchar(255) DEFAULT NULL,
+ PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE `group` (
+ id int(11) unsigned NOT NULL AUTO_INCREMENT,
+ faculty_id int(10) unsigned DEFAULT NULL,
+ name varchar(255) DEFAULT NULL,
+ PRIMARY KEY (id),
+ KEY faculty_id (faculty_id),
+ CONSTRAINT faculty_id FOREIGN KEY (faculty_id) REFERENCES faculty (id) ON DELETE SET NULL ON UPDATE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+CREATE TABLE student (
+ id int(11) unsigned NOT NULL AUTO_INCREMENT,
+ first_name varchar(255) DEFAULT NULL,
+ second_name varchar(255) DEFAULT NULL,
+ last_name varchar(255) DEFAULT NULL,
+ group_id int(10) unsigned DEFAULT NULL,
+ PRIMARY KEY (id),
+ KEY group_id (group_id),
+ CONSTRAINT group_id FOREIGN KEY (group_id) REFERENCES group (id) ON DELETE SET NULL ON UPDATE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+```
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Was bedeutet Normalisierung?
+
+Normalisierung ist ein Entwurfsansatz für relationale Datenbanken mit dem Ziel:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Redundanzen zu reduzieren, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Inkonsistenzen zu vermeiden, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Update-/Insert-/Delete-Anomalien zu verhindern, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Datenmodelle klar und wartbar zu strukturieren.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Warum überhaupt normalisieren?
+
+Typische Probleme ohne Normalisierung:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Update-Anomalie**: gleiche Information an mehreren Stellen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Insert-Anomalie**: neue Fakten lassen sich nicht sauber einfügen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**Delete-Anomalie**: beim Löschen geht ungewollt Zusatzwissen verloren
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Warum überhaupt normalisieren?
+
+Nutzen:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->konsistentere Daten, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->klarere Verantwortlichkeiten, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->einfachere Pflege und Änderung.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Grundkonzepte: Schlüssel & Abhängigkeiten
+
+Für Normalisierung zentral:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Schlüssel / Schlüsselkandidaten** 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**funktionale Abhängigkeit**: A → B 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**voll funktional abhängig** (wichtig für 2NF) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->**transitiv abhängig** (wichtig für 3NF)
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Häufiger Einwand: „Nur gesunder Menschenverstand?“
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Einwand: „Normalisierung ist nur gesunder Menschenverstand; erfahrene Profis entwerfen ohnehin intuitiv ein sauberes Schema.“ 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Einordnung: Genau diese Denkregeln werden durch die Theorie der Abhängigkeiten explizit gemacht. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Kerngedanke: Normalisierungsprinzipien sind **formalisierter** gesunder Menschenverstand. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Nutzen der Formalisierung: Entwürfe werden nachvollziehbar, diskutierbar und systematisch prüfbar.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Normalform (1NF)
+
+Kriterien:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Attributwerte sind **atomar** (nicht weiter sinnvoll aufteilbar), 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->keine Wiederholungsgruppen in einer Spalte oder Spaltengruppe.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Normalform (1NF)
+
+Vor der Normalisierung (nicht 1NF):
+
+| Name | Hobbys |
+|---|---|
+| Thomas Müller | Schlittschuhe, Motorrad |
+| Anna Schmidt | ClickHouse |
+| Lukas Weber | Porträts, PlayStation |
+| Sophie Fischer | Fotografie, Fahrräder, Audiotechnik, Messer |
+| Daniel Wagner | Gitarre, Radiotechnik |
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Normalform (1NF)
+
+Nach 1NF:
+
+| Name | Hobby |
+|---|---|
+| Thomas Müller | Schlittschuhe |
+| Thomas Müller | Motorrad |
+| Anna Schmidt | ClickHouse |
+| Lukas Weber | Porträts |
+| ... | ... |
+| Daniel Wagner | Gitarre |
+| Daniel Wagner | Radiotechnik |
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Normalform (2NF)
+
+Kriterien:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->1NF ist erfüllt, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->kein Nichtschlüsselattribut hängt nur von **Teilen** eines zusammengesetzten Schlüssels ab. 
+
+<div class="fragment" data-fragment-index="3">
+
+Interpretation:
+
+- Nichtschlüsselattribute hängen vom **gesamten** Schlüssel ab.
+- Besonders relevant bei Tabellen mit Verbundschlüsseln.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Normalform (2NF)
+
+Vor der Normalisierung (nicht 2NF):
+
+| Name | Projekt | Projektkunde |
+|---|---|---|
+| Thomas Müller | KaiserDom | Sabine Keller |
+| Thomas Müller | Unitrust | Jonas Winter |
+| Anna Schmidt | Ehrenwand | Markus Adler |
+| Lukas Weber | KaiserDom | Sabine Keller |
+| Daniel Wagner | KaiserDom | Sabine Keller |
+| Daniel Wagner | Unitrust | Jonas Winter |
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Normalform (2NF)
+
+| worker_id | Name | project_id | Projekt | Projektkunde |
+|---|---|---|---|---|
+| 101 | Thomas Müller | 10 | KaiserDom | Sabine Keller |
+| 101 | Thomas Müller | 11 | Unitrust | Jonas Winter  |
+| ... | ... | ... | ... | ...  |
+| 104 | Daniel Wagner | 10 | KaiserDom | Sabine Keller |
+| 104 | Daniel Wagner | 11 | Unitrust | Jonas Winter |
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Normalform (2NF)
+
+Nach 2NF (Zerlegung):
+
+| worker_id | project_id |
+|---|---|
+| 101 | 10 |
+| 101 | 11 |
+| 102 | 12 |
+| 103 | 10 |
+| 104 | 10 |
+| 104 | 11 |
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Normalform (2NF)
+
+| worker_id | Name |
+|---|---|
+| 101 | Thomas Müller |
+| 102 | Anna Schmidt |
+| 103 | Lukas Weber |
+| 104 | Daniel Wagner |
+
+| project_id | Projekt | Projektkunde |
+|---|---|---|
+| 10 | KaiserDom | Sabine Keller |
+| 11 | Unitrust | Jonas Winter |
+| 12 | Ehrenwand | Markus Adler |
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Normalform (3NF)
+
+Kriterien:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->2NF ist erfüllt, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->keine transitive Abhängigkeit von Nichtschlüsselattributen.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Normalform (3NF)
+
+Beispiel (nicht 3NF):
+
+| reifen_id | Reifenmodell | Firma | Telefon |
+|---|---|---|---|
+| 1 | Nokian Hakka | Müller Reifenhandel e.K. | +49 30 42871123 |
+| 2 | Nokian Nordman | Schneider Reifen GmbH | +49 40 33445566 |
+| 3 | Continental ContiIce | AutoMaxx GmbH | +49 89 44556677 |
+| 4 | Matador | Schmidt Reifenservice e.K. | +49 211 55667788 |
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Normalform (3NF)
+
+**Problem**
+
+Transitive Abhängigkeit: `reifen_id -> Firma` und `Firma -> Telefon`, also indirekt `reifen_id -> Telefon`.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Normalform (3NF)
+
+ Nach 3NF (Zerlegung):
+
+| reifen_id | Reifenmodell | firmen_id |
+|---|---|---|
+| 1 | Nokian Hakka | 201 |
+| 2 | Nokian Nordman | 202 |
+| 3 | Continental ContiIce | 203 |
+| 4 | Matador | 204 |
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Normalform (3NF)
+
+| firmen_id | Firma | Telefon |
+|---|---|---|
+| 201 | Müller Reifenhandel e.K. | +49 30 42871123 |
+| 202 | Schneider Reifen GmbH | +49 40 33445566 |
+| 203 | AutoMaxx GmbH | +49 89 44556677 |
+| 204 | Schmidt Reifenservice e.K. | +49 211 55667788 |
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Grenzen & bewusste Denormalisierung
+
+Normalisierung konkurriert teilweise mit:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Lese-Performance, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Einfachheit komplexer Reports, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Domänenspezifischen Anforderungen. 
+
+<div class="fragment" data-fragment-index="4">
+
+Deshalb in Analytics oft:
+
+- **gezielte Denormalisierung**,
+- plus Datenqualitäts- und Abgleichmechanismen.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Zusammenfassung
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Normalisierung erhöht Datenqualität und Wartbarkeit. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->1NF–3NF decken den Großteil praktischer Modellierungsprobleme ab. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->BCNF/4NF/5NF sind wichtig für spezielle, komplexe Abhängigkeiten. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Gute Datenmodelle balancieren Konsistenz, Verständlichkeit und Performance.
+</div></script></section></section><section ><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" data-background-color="#183b66" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# Teil 3: NoSQL und MongoDB
+
+Dokumentenmodell, CRUD, Aggregation und die Abwägung gegen relationale Systeme.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Was ist NoSQL?
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Sammelbegriff für Datenbanksysteme, die Daten nicht primär relational organisieren. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Typische Ziele sind flexible Modellierung, horizontale Skalierung und verteilte Verarbeitung. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Viele Systeme sind schemaflexibler als klassische relationale Datenbanken. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->NoSQL ersetzt SQL nicht pauschal, sondern ergänzt es für andere Problemklassen.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## NoSQL-Typen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Dokumentenorientiert**: MongoDB, Couchbase 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Key-Value**: Redis, DynamoDB 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**Wide-Column**: Cassandra, HBase 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->**Graph**: Neo4j, JanusGraph 
+
+<div class="fragment" data-fragment-index="5">
+
+Praxisregel:
+
+- Zuerst Datenzugriff und Änderungsverhalten verstehen, erst danach den Datenbanktyp auswählen.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Warum MongoDB?
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->BSON-Dokumente bilden Anwendungsobjekte sehr direkt ab. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Verschachtelte Objekte und Arrays lassen sich natürlich modellieren. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Das Schema kann mit dem Produkt wachsen, ohne bei jeder Änderung Migrationen zu erzwingen. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Shell, Treiber und Ökosystem machen MongoDB für Teams pragmatisch nutzbar.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Datenmodell in MongoDB
+
+Kernbegriffe:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Database**: fachlicher Container 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Collection**: Gruppe ähnlicher Dokumente 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**Document**: zusammengehörige Daten in einer Einheit 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->**Field**: einzelnes Attribut im Dokument 
+
+<div class="fragment" data-fragment-index="5">
+
+Dokumente können:
+
+- verschachtelte Objekte enthalten,
+- Arrays enthalten,
+- je nach Fall leicht unterschiedliche Felder besitzen.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Beispiel-Dokument
+
+```json
+{
+  "_id": "65fd1e...",
+  "matrikelnummer": "S-2026-001",
+  "name": {
+    "vorname": "Anna",
+    "nachname": "Schmidt"
+  },
+  "gruppe": "INF-21A",
+  "tags": ["python", "tutorin"],
+  "kurs_ids": ["DB-101", "AI-210"],
+  "credits": 84
+}
+```
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="smaller drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Embedded vs Referencing
+
+**Embedded (einbetten)**
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->sinnvoll, wenn Daten gemeinsam gelesen und gemeinsam gespeichert werden 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->reduziert zusätzliche Abfragen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->vermeidet technische Joins in vielen Alltagsszenarien 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->wird problematisch, wenn Teilobjekte stark wachsen oder unabhängig weiterverwendet werden 
+
+<div class="fragment" data-fragment-index="5">
+
+**Referencing (referenzieren)**
+
+- sinnvoll, wenn Entitäten mehrfach genutzt werden
+- reduziert Redundanz und vereinfacht zentrale Änderungen
+- benötigt oft zusätzliche Abfragen oder `$lookup`
+- passt gut zu Kursen, Produkten, Rollen oder Stammdaten
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="smaller drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Referencing in der Praxis
+
+```javascript
+// students
+{
+  matrikelnummer: "S-2026-001",
+  name: { vorname: "Anna", nachname: "Schmidt" },
+  kurs_ids: ["DB-101", "AI-210"]
+}
+
+// kurse
+{
+  kurs_id: "DB-101",
+  titel: "Datenbanken",
+  ects: 5
+}
+```
+
+<div class="fragment" data-fragment-index="1">
+
+> [!tip]
+> Viele Studierende belegen dieselben Kurse, deshalb wäre Einbetten hier meist unnötig redundant.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="smaller drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Arbeitskontext in der Shell
+
+```javascript
+mongosh
+use workshop
+db.createCollection("students")
+db.createCollection("kurse")
+show collections
+```
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Alle folgenden Befehle laufen in der MongoDB-Shell `mongosh`. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->`use workshop` wechselt in die Datenbank und legt sie bei Bedarf an. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Collections entstehen explizit oder implizit beim ersten Schreiben.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="smaller code-dicht drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## CRUD in MongoDB
+
+```javascript
+// C: Create
+db.students.insertOne({
+  matrikelnummer: "S-2026-002",
+  name: { vorname: "Lukas", nachname: "Weber" },
+  gruppe: "INF-21A",
+  tags: ["java"],
+  kurs_ids: ["DB-101"],
+  credits: 72
+});
+
+// R: Read
+db.students.find(
+  { gruppe: "INF-21A" },
+  { _id: 0, matrikelnummer: 1, "name.vorname": 1, "name.nachname": 1, credits: 1 }
+);
+
+// U: Update
+db.students.updateOne(
+  { matrikelnummer: "S-2026-002" },
+  {
+    $set: { credits: 78 },
+    $addToSet: { tags: "mongodb" }
+  }
+);
+
+// D: Delete
+db.students.deleteOne({ matrikelnummer: "S-2026-002" });
+```
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="smaller drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Abfragen und Filter
+
+```javascript
+// Vergleichsoperatoren
+db.students.find({ credits: { $gte: 60, $lt: 90 } });
+
+// Kombination von Bedingungen
+db.students.find({
+  gruppe: "INF-21A",
+  tags: "python"
+});
+
+// Sortierung, Projektion und Limit
+db.students.find(
+  { gruppe: "INF-21A" },
+  { _id: 0, matrikelnummer: 1, "name.vorname": 1, credits: 1 }
+).sort({ credits: -1 }).limit(5);
+```
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="smaller code-dicht drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Aggregation Pipeline
+
+```javascript
+db.students.aggregate([
+  {
+    $match: {
+      gruppe: { $in: ["INF-21A", "INF-21B"] }
+    }
+  },
+  {
+    $group: {
+      _id: "$gruppe",
+      durchschnittliche_credits: { $avg: "$credits" },
+      anzahl_studierende: { $sum: 1 }
+    }
+  },
+  {
+    $sort: {
+      durchschnittliche_credits: -1
+    }
+  }
+]);
+```
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="smaller code-dicht drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Join-ähnliche Auswertung mit `$lookup`
+
+```javascript
+db.students.aggregate([
+  { $match: { matrikelnummer: "S-2026-001" } },
+  {
+    $lookup: {
+      from: "kurse",
+      localField: "kurs_ids",
+      foreignField: "kurs_id",
+      as: "kurse"
+    }
+  },
+  {
+    $project: {
+      _id: 0,
+      matrikelnummer: 1,
+      "name.vorname": 1,
+      "name.nachname": 1,
+      "kurse.titel": 1,
+      "kurse.ects": 1
+    }
+  }
+]);
+```
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="smaller drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Indexe in MongoDB
+
+```javascript
+// Eindeutige Identifikation
+db.students.createIndex({ matrikelnummer: 1 }, { unique: true });
+
+// Häufige Liste: Gruppe plus Sortierung nach Credits
+db.students.createIndex({ gruppe: 1, credits: -1 });
+
+// Referenzsammlung
+db.kurse.createIndex({ kurs_id: 1 }, { unique: true });
+```
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Indexe beschleunigen Lesezugriffe, kosten aber Speicher und verlangsamen Schreiboperationen. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Gute Indexe leiten sich aus echten Query-Mustern ab, nicht aus Bauchgefühl.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="smaller code-dicht drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Schema-Validierung (optional, aber sinnvoll)
+
+```javascript
+db.createCollection("students", {
+  validator: {
+    $jsonSchema: {
+      bsonType: "object",
+      required: ["matrikelnummer", "name", "gruppe"],
+      properties: {
+        matrikelnummer: { bsonType: "string" },
+        name: {
+          bsonType: "object",
+          required: ["vorname", "nachname"],
+          properties: {
+            vorname: { bsonType: "string" },
+            nachname: { bsonType: "string" }
+          }
+        },
+        gruppe: { bsonType: "string" },
+        tags: {
+          bsonType: "array",
+          items: { bsonType: "string" }
+        },
+        kurs_ids: {
+          bsonType: "array",
+          items: { bsonType: "string" }
+        },
+        credits: { bsonType: "int", minimum: 0 }
+      }
+    }
+  }
+});
+```
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Konsistenz und Transaktionen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->MongoDB unterstützt Transaktionen über mehrere Dokumente und Collections. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Gute Modellierung versucht trotzdem, Multi-Document-Transaktionen zur Ausnahme zu machen. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Je mehr Fachlogik mit verteilten Änderungen, desto teurer wird das System im Betrieb.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## SQL vs MongoDB
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**SQL** ist stark bei stabilen, stark verknüpften Domänen mit vielen Joins. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**MongoDB** ist stark bei dokumentnahen, hierarchischen und sich entwickelnden Datenstrukturen. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->SQL denkt stärker in Normalisierung und Beziehungen. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->MongoDB denkt stärker in Zugriffsmustern und fachlich zusammengehörigen Dokumenten.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Gute Einsatzszenarien für MongoDB
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Produkt- und Content-Kataloge mit variablen Attributen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Event-, Telemetrie- und Log-Daten 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->API-Backends mit JSON-lastigen Nutzdaten 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Anwendungen, in denen sich das Schema noch sichtbar weiterentwickelt
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Wann relationale Systeme oft besser passen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Viele komplexe Joins über stabile, stark verknüpfte Fachdomänen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Harte Integritätsregeln über zahlreiche Entitäten hinweg 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Berichte, die stark von relationalen Auswertungen und klassischen BI-Mustern leben
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Zum Schluss
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->MongoDB ist besonders stark, wenn Daten fachlich natürlich als Dokumente auftreten. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Gute MongoDB-Modellierung orientiert sich an Lese- und Schreibmustern, nicht zuerst an Normalformen. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Flexibilität ist kein Freifahrtschein: Validierung, Indexe und Konsistenzentscheidungen bleiben Pflicht. 
+
+<div class="fragment" data-fragment-index="4">
+
+> [!tip]
+> Entscheidungsregel: Wenn ein fachlicher Vorgang meist auf ein Dokument oder wenige eng zusammengehörige Dokumente passt, ist MongoDB oft sehr stark.
+
+</div>
+</div></script></section></section><section ><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" data-background-color="#183b66" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# Teil 4: Data Warehouse, Data Lake und Lakehouse
+
+OLTP und OLAP, Schichten im DWH, Inmon und Kimball, Data Lake und Lakehouse, Objektspeicher am Beispiel S3.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Warum ein Data Warehouse?
+
+Ein DWH adressiert typische Analyseprobleme:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Daten liegen verteilt in mehreren Quellsystemen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->operative Systeme enthalten oft zu wenig Historie, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->analytische Fragestellungen benötigen konsolidierte, vergleichbare Daten. 
+
+<div class="fragment" data-fragment-index="4">
+
+Kernziel:
+
+- **verlässliche Entscheidungsgrundlage** für Reporting, BI und Analyse.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## OLTP: operative Transaktionssysteme
+
+**OLTP (Online Transaction Processing)** ist auf operative Prozesse optimiert.
+
+Typisch:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->viele gleichzeitige Nutzer, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->kurze, einfache Anfragen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->sehr niedrige Latenz (ms bis sub-ms), 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->häufige Inserts/Updates/Deletes.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## OLAP: analytische Systeme
+
+**OLAP (Online Analytical Processing)** ist auf Analyse optimiert.
+
+Typisch:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->komplexe, ad-hoc Abfragen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->historische Daten über längere Zeiträume, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Aggregationen, Trends, Vergleichsanalysen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->weniger Requests, aber deutlich schwerere Queries.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## OLAP: analytische Systeme
+
+| Dimension | OLTP | OLAP |
+|---|---|---|
+| Ziel | Operative Prozesse | Analyse/Entscheidungen |
+| Daten | Aktuelle Detaildaten | Historie + Aggregationen |
+| Abfragen | Vordefiniert, kurz | Ad-hoc, komplex |
+| Änderungen | Kontinuierlich | Periodische Ladungen / Refresh |
+| Modellierung | Stark normalisiert | Analysefreundlich  |
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## DWH-Referenzarchitektur
+
+1. &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Primary Data Layer** (Raw/Staging) 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Core Data Layer** (zentraler Integrationskern) 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**Data Mart Layer** (fachliche Ausspielung für Konsumenten)
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Primary Data Layer (Raw/Staging)
+
+Aufgaben:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Aufnahme von Quellsystemdaten in Rohform, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Historisierung von Änderungen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Entkopplung von Quelltechnologien und Folgeschichten. 
+
+<div class="fragment" data-fragment-index="4">
+
+Nutzen:
+
+- Nachvollziehbarkeit, Reproduzierbarkeit, robuste Pipeline-Grundlage.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Core Data Layer
+
+Aufgaben:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Konsolidierung über mehrere Quellen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Vereinheitlichung von Schlüsseln und Strukturen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Datenqualitätsregeln und zentrale Transformationen. 
+
+<div class="fragment" data-fragment-index="4">
+
+Nutzen:
+
+- Consumer werden von Quelllogik und Mapping-Komplexität abstrahiert.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Data Mart Layer (Konsum-Schicht)
+
+Aufgaben:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Aufbereitung für konkrete Analyse- und Reportingzwecke, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->themenspezifische Sichten pro Fachbereich, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->optimierte Strukturen für BI-Tools. 
+
+<div class="fragment" data-fragment-index="4">
+
+Nutzen:
+
+- schnellere Time-to-Insight,
+- klare, zielgruppengerechte Datenprodukte.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Inmon-Ansatz (Top-down)
+
+Charakteristik:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->zentraler Unternehmensblick zuerst, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->starke Modellierung des Core-Layers, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Data Marts als nachgelagerte Ableitungen. 
+
+<div class="fragment" data-fragment-index="4">
+
+Vorteile:
+
+- hohe Konsistenz,
+- einheitliche KPI-Definitionen,
+- gute Skalierbarkeit bei vielen Quellen.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Inmon-Ansatz (Top-down)
+
+Nachteile:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->höherer Initialaufwand, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->längere Vorlaufzeit bis zu sichtbaren Ergebnissen.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Kimball-Ansatz (Bottom-up)
+
+Charakteristik:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Start mit konkreten Fachanforderungen/Reports, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Data Marts im Vordergrund, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->schrittweise Ausbau. 
+
+<div class="fragment" data-fragment-index="4">
+
+Vorteile:
+
+- schneller Business-Impact,
+- pragmatischer Einstieg,
+- gute Iterierbarkeit.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Kimball-Ansatz (Bottom-up)
+
+Nachteile:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Risiko uneinheitlicher Kennzahlen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->steigende Harmonisierungskosten bei Wachstum.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Inmon vs. Kimball
+
+Wann eher Inmon?
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->hohe Governance-Anforderungen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->viele Quellen und Domänen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->langfristiger Enterprise-Fokus. 
+
+<div class="fragment" data-fragment-index="4">
+
+Wann eher Kimball?
+
+- schneller Nutzen gefordert,
+- klar abgegrenzte Fach-Use-Cases,
+- begrenzte Startkapazitäten.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Inmon vs. Kimball
+
+Praxis:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->häufig **hybride** Umsetzung (Governance + inkrementelle Delivery).
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Data Lake
+
+Ein **Data Lake** speichert heterogene Daten oft zunächst roh:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->strukturierte Daten, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->semi-strukturierte Daten (z. B. JSON, Logs), 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->unstrukturierte Daten (z. B. Bild/Video/Audio, Dokumente). 
+
+<div class="fragment" data-fragment-index="4">
+
+Typisch:
+
+- schema-on-read,
+- hohe Flexibilität bei neuen Datentypen,
+- oft günstige, skalierbare Objekt- oder Filesystem-Storage-Basis.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Data Lake: Stärken und Grenzen
+
+Stärken:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->schnelle Aufnahme neuer Datenquellen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->gute Skalierbarkeit, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->niedrige Einstiegskosten. 
+
+<div class="fragment" data-fragment-index="4">
+
+Grenzen ohne Governance:
+
+- unklare Semantik,
+- uneinheitliche Qualität,
+- hoher Aufbereitungsaufwand für BI.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Data Swamp vermeiden
+
+**Data Swamp** = „Daten sind da, aber kaum nutzbar“.
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->fehlende Qualitätskontrollen, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->schwache Metadatenpflege, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->keine klaren Ownerships, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->unzureichende Katalogisierung und Lineage. 
+
+<div class="fragment" data-fragment-index="5">
+
+Gegenmaßnahmen:
+
+- verbindliche Ingestion-Standards,
+- Data Catalog + Lineage,
+- Qualitätsregeln und Zugriffskonzepte.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Warum Lakehouse?
+
+Lakehouse entstand aus den Grenzen von reinem DWH und reinem Data Lake:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->DWH: starke Governance, aber oft teurer und schema-strenger, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Data Lake: flexibel und günstig, aber häufig ohne ausreichende Transaktions-/Qualitätsgarantien.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Warum Lakehouse?
+
+**Lakehouse** kombiniert beides:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->offene, skalierbare Storage-Schicht, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->transaktionale/verlässliche Tabellensemantik, 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->einheitlicher Datenzugriff für BI, Analytics und ML.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Lakehouse: zentrale Bausteine
+
+1. &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Storage Layer** (z. B. S3/ADLS/GCS/HDFS) 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Open Table Formats** (z. B. Iceberg, Delta, Hudi) 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**Catalog/Metadata Layer** 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="4" -->**Compute Layer** (Batch + Streaming) 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="5" -->**BI/Analytics Layer** 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="6" -->**Governance/Security Layer**
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Lakehouse: zentrale Bausteine
+
+| Kriterium | DWH | Data Lake | Lakehouse |
+|---|---|---|---|
+| Datentypen | v. a. strukturiert | alle Typen | alle Typen |
+| Governance/Konsistenz | hoch | stark variabel | hoch  |
+| Kosten/Flexibilität | mittel–hoch / mittel | niedrig / hoch | mittel / hoch |
+| BI-Tauglichkeit | sehr gut | oft indirekt | sehr gut |
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Was ist S3?
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Simple Storage Service 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Objektspeicher: Daten als **Objekte** in **Buckets** (nicht „File System“) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Zugriff über APIs/SDKs/CLI/Console (HTTP/REST) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Hohe Haltbarkeit (Design-Ziel: 11×9) + (je nach Klasse) Multi-AZ-Resilienz (Availability Zones) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->Typische Rolle: „Separation of Storage & Compute“ (Apps, Analytics, Backup/Archive)
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Datenmodell & Regionen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Bucket**: Container, globaler Namespace (Name muss eindeutig sein, je Partition) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Objekt**: Daten + Key (Name) + Metadaten; Keys sind „Pfad-artig“, aber keine echten Ordner 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**Region**: bestimmt Datenresidenz, Latenz, Kosten (u.a. Transfer/Request) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Naming: DNS-kompatibel; nutze eindeutige Suffixe (z.B. GUID/Projekt/Account) 
+
+<div class="fragment" data-fragment-index="5">
+
+```bash
+# Beispiel:
+export BUCKET="myproj-data-$(uuidgen | tr '[:upper:]' '[:lower:]')"
+# myproj-data-3f2c9b6d-8d74-4d4f-8f1a-6f9a2bb1c1e7
+```
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Versioning, Lifecycle, Replication
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Versioning**: Schutz vor Überschreiben/Löschen (Rollback möglich) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Lifecycle**: automatisierte Transitions/Expiration 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**Replication**: Compliance, Latenz, Disaster Recovery; Planung inkl. Kosten/Policies 
+
+<div class="fragment" data-fragment-index="4">
+
+```bash
+# Versioning aktivieren
+aws s3api put-bucket-versioning \
+  --bucket "$BUCKET" \
+  --versioning-configuration Status=Enabled
+```
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Use Cases
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Typische Use Cases: Static Content, Backup/Archive, Data Lake/Analytics, Event-driven Processing 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Architekturprinzip: S3 als „System of Record“; Compute/Analytics consuming on demand 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Für öffentliche Websites: häufig HTTPS und Caching davor; S3 Website-Endpunkte sind ein Spezialfall
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Zusammenfassung
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->OLTP und OLAP erfüllen unterschiedliche Zwecke. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->DWH lebt von klaren Schichten: Raw → Core → Mart. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Data Lake bringt Flexibilität, braucht aber starke Governance (sonst Data Swamp). 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Lakehouse kombiniert offene Storage-Flexibilität mit DWH-ähnlicher Verlässlichkeit. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->Inmon vs. Kimball ist kontextabhängig, oft hybrid.
+</div></script></section></section><section ><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" data-background-color="#183b66" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# Teil 5: ETL-Pipelines: Grundlagen
+
+ETL, ELT und Reverse ETL, das Grundmuster einer Pipeline und die Leitprinzipien.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Warum ETL heute geschäftskritisch ist
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Entscheidungen hängen an verlässlichen Daten 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->BI, ML/AI und operative Systeme greifen auf dieselben Pipelines zu 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Compliance, Security und Auditierbarkeit steigen in Priorität
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Business-Impact von guten Pipelines
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->schnellere Insights 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->weniger Incident-Kosten 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->höhere Vertrauenstiefe bei Stakeholdern 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->kürzere Time-to-Market für Datenprodukte
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## ETL
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Extract**: Daten erfassen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Transform**: Daten nutzbar machen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**Load**: Daten zielgerichtet bereitstellen 
+
+<div class="fragment" data-fragment-index="4">
+
+*ETL ist kein Job, sondern ein System.*
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## ETL vs ELT vs Reverse ETL
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**ETL**: Transform vor dem Laden 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**ELT**: Laden vor der Transformationslogik 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**Reverse ETL**: kuratierte Daten zurück in operative Tools 
+
+<div class="fragment" data-fragment-index="4">
+
+Praxis: häufig hybride Kombination.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Grundmuster
+
+<!-- diagramm: d_etl_grundmuster | medallion | Quellen, Ingestion, Raw (Bronze), Curated (Silver), Business (Gold), daraus BI, ML/AI und operative Apps -->
+<img src="figs/d_etl_grundmuster.png" alt="" style="object-fit: scale-down">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Leitprinzipien für alle Entscheidungen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->reliability first 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->idempotent by default 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->observability everywhere 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->standardize what repeats 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->optimize with metrics, not opinions
+</div></script></section></section><section ><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" data-background-color="#183b66" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# Teil 6: Data Ingestion
+
+Ziel: viele Quellen konsistent onboarden, schema- und versionsrobust bleiben, klare Service Level Objectives (SLOs) für Frische und Vollständigkeit sichern.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Source-Assessment: Pflichtfragen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Wer sind Owner und Stakeholder? 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Wofür wird die Quelle fachlich genutzt? 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Welche Frequenz ist real erforderlich? 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Bounded oder unbounded Datenfluss?
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Source-Assessment: Pflichtfragen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Volumen jetzt vs. in 12 Monaten? 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Format und Strukturgrad (JSON/CSV/DB/Event)? 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Qualität und bekannte Schwachstellen? 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Sicherheits-/PII-Einstufung (PII = Personally Identifiable Information)?
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Ingestion-Muster
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->batch (planbar, kosteneffizient) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->micro-batch 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->streaming (niedrige Latenz, höherer Betriebsaufwand) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->CDC = Change Data Capture (effizient bei Änderungsdaten)
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Batch vs Streaming: Entscheidungsraster
+
+**Batch** wenn:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Stunden-/Tageslatenz genügt 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Kosten und Einfachheit priorisiert sind 
+
+<div class="fragment" data-fragment-index="3">
+
+**Streaming** wenn:
+
+- Minuten-/Sekundenreaktion nötig ist
+- kontinuierliche Ereignisverarbeitung Business-kritisch ist
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Ingestion-Frequenz als Produktentscheidung
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->nicht „was technisch geht“ 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->sondern „was fachlich wirklich gebraucht wird“ 
+
+<div class="fragment" data-fragment-index="3">
+
+Faustregel: so selten wie möglich, so häufig wie nötig.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Schema-Drift beherrschen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Versionierung von Contracts 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Breaking Changes explizit kommunizieren 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Validierung bei Ingestion (Schema + Feldregeln) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Quarantäne für ungültige Datensätze
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Ingestion-Sicherheit
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->least privilege für Jobs 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Secret Management statt Hardcoded Credentials 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Verschlüsselung in transit + at rest 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Audit-Logs für Zugriffe und Pipeline-Runs
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Ingestion Anti-Patterns
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->jede Quelle individuell „special cased" 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->fehlende Ownership pro Source 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->keine Backfill-Strategie 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Alerts erst beim Fachbereich sichtbar
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Ingestion Done-Definition
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->source checklist vollständig 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->klare SLOs (Freshness/Completeness) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Monitoring + Alerts aktiv 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->dokumentierter Onboarding-Runbook
+</div></script></section></section><section ><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" data-background-color="#183b66" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# Teil 7: Data Transformation
+
+Ziel: aus Rohdaten verlässliche Datenprodukte machen, Fachlogik reproduzierbar und testbar betreiben, Änderungen sicher ausrollen.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Transformation als mehrstufiger Prozess
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Rohdaten normalisieren 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Daten bereinigen und anreichern 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Fachlogik modellieren 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->aggregieren und bereitstellen
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Transformationsumgebung wählen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Warehouse-zentriert (SQL-first) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Lake + externes Compute 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Lakehouse (einheitlicherer Operating Layer) 
+
+Entscheidung nach Team, Datenprofil, Kostenmodell.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## SQL vs Python
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->SQL: stark für tabellarische Logik und Governance 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Python: stark für komplexe/algorithmische Verarbeitung 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->starke Plattformen kombinieren beides sauber
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Update-Strategien
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->full refresh 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->incremental insert 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->upsert/merge 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->CDC-basiertes Aktualisieren 
+
+<div class="fragment" data-fragment-index="5">
+
+Kein Pattern ist „immer richtig“.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Idempotenz
+
+Jeder Lauf muss wiederholbar sein ohne Seiteneffekte:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->stabile Keys 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->deterministische Business-Logik 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->kontrollierte Merge-Policies 
+
+<div class="fragment" data-fragment-index="4">
+
+*Ein erneuter Lauf mit denselben Inputs erzeugt denselben Zielzustand, ohne Duplikate oder widersprüchliche Updates!*
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Data Quality Gates in Transformation
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->uniqueness checks 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->null/mandatory checks 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->domain checks (Wertebereiche) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->referential checks 
+
+<div class="fragment" data-fragment-index="5">
+
+Fehler früh stoppen!
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Tests
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->unit tests für Kernlogik 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->data tests für Modelle 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->regression checks vor Deployment 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->smoke tests direkt nach Run
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Transformation Anti-Patterns
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->monolithische „alles in einem Job“-Pipelines 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->ungeklärte Feldsemantik 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Reports auf Roh-/Silver-Tabellen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->keine Ownership pro Gold-Modell
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Transformation Done-Definition
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->klare Layer-Zuordnung 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->dokumentierte Business-Definitionen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->automatisierte Tests/Gates 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->reproduzierbarer Backfill möglich
+</div></script></section></section><section ><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" data-background-color="#183b66" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# Teil 8: Orchestrierung
+
+Ziel: abhängige Tasks robust und sichtbar steuern, Fehlerbehandlung und Recovery standardisieren, Laufzustände nachvollziehbar halten.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Orchestrator vs Scheduler
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Scheduler: Zeitsteuerung 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Orchestrator: Zeit + Events + Abhängigkeiten + Recovery + Monitoring
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## DAG-Grundlagen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Node = Task 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Edge = Dependency 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->gerichteter, zyklusfreier Ausführungsgraph
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## DAG-Grundlagen
+
+<!-- diagramm: d_etl_dag | flowchart | Acht Tasks als DAG: 1 und 2 laufen in 3 zusammen, 4 verzweigt in 5 und 6, beide münden in 7, danach 8 -->
+<img src="figs/d_etl_dag.png" alt="" style="object-fit: scale-down">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Trigger-Modelle
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->zeitbasiert (cron) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->event-driven (Webhook/Queue/File arrival) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->dependency-driven (upstream success)
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Orchestrierungsmuster
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->task decomposition 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->retries mit backoff (wachsende Wartezeit) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->dead letter handling (separate Fehlerablage) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->idempotent reruns 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->run metadata + lineage links
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Rolle des Orchestrators
+
+Best practice:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Orchestrator steuert 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->spezialisierte Services rechnen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->klare Trennung von Workflowlogik und Verarbeitungscode
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Auswahlkriterien
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Skalierbarkeit 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Integrationen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Betriebsmodell (managed/self-hosted) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Team-Fit & Lernkurve 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->Debuggability & Observability
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Orchestrierung Done-Definition
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->DAGs klein, modular, nachvollziehbar 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Retry-/Timeout-Konventionen etabliert 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Alerts mit Owner-Routing 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Runbook pro kritischer Pipeline
+</div></script></section></section><section ><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" data-background-color="#183b66" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# Teil 9: Betrieb, Stabilität und Kosten
+
+Ziel: vorfälle schneller erkennen und eingrenzen, mittlere Wiederherstellungszeit reduzieren, systematisch aus Fehlern lernen.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Wartbarkeit als Wirtschaftsfaktor
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->direkte Kosten: Compute, Laufzeit, Ops-Aufwand 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->indirekte Kosten: Ausfallfolgen, Vertrauensverlust, Team-Burnout 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Wartbarkeit ist keine „Nice-to-have“-Eigenschaft.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Observability-Stack
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->logs 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->metrics 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->traces 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->lineage 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->alerting
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Quality-Metriken konkret
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->uniqueness 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->completeness 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->validity 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->consistency 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->referential integrity
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Lineage für Incident-Response
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->schneller Root Cause 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Impact-Analyse (welche Reports betroffen?) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->kontrollierte Kommunikation an Stakeholder
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Präventive Kontrollen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->anomaly detection 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->data diff checks 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->assertions 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->schema checks bei Ingestion
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Error Handling Patterns
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->conditional branching 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->retries mit sinnvollen Grenzen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->circuit breaker bei externen Quellen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->partial failure isolation
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Graceful Degradation
+
+Wenn ein Teil ausfällt:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Restsystem bleibt funktionsfähig 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->betroffene Produkte klar kommuniziert 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Recovery priorisiert nach Business-Impact
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Incident-Lifecycle
+
+1. &shy;<!-- .element: class="fragment" data-fragment-index="1" -->detect 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="2" -->triage 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="3" -->mitigate 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="4" -->recover 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="5" -->postmortem 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="6" -->preventive action
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Postmortem-Template
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->was ist passiert? 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->warum ist es passiert? 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->warum wurde es nicht früher erkannt? 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->welche Guardrails fehlen? 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->welche Maßnahmen bis wann, mit Owner?
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Effizienz, Skalierung, Kosten
+
+Ziel:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->mehr Last verarbeiten 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->stabile Qualität halten 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Kosten kontrolliert entwickeln
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Compute-Strategien
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->on-demand (stabil, teurer) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->spot/preemptible (günstiger, unterbrechbar) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->pool/shared clusters 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->serverless (weniger Ops, andere Kostenkurve)
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Rollen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Platform/Data Infra 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Data Engineering 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Analytics Engineering 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Data Governance/Stewardship 
+- &shy;<!-- .element: class="fragment" data-fragment-index="5" -->Product/Business Owner
+</div></script></section></section><section ><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" data-background-color="#183b66" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+# Teil 10: Apache Spark
+
+Spark Core, RDDs und DataFrames, Spark SQL, Streaming, MLlib und GraphX, Einordnung gegenüber Hadoop.
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Was ist Apache Spark?
+
+Apache Spark ist eine verteilte In-Memory-Plattform für Big-Data-Verarbeitung.
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Entwickelt für schnelle, parallele Datenverarbeitung in Clustern 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Unterstützt Batch, Streaming, SQL, Machine Learning und Graph-Analysen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Open-Source-Projekt der Apache Software Foundation 
+
+<img src="figs/spark_logo.png" alt="" style="width: 25%; object-fit: fill" class="fragment" data-fragment-index="4">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="bild-gross drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Warum Spark so häufig eingesetzt wird
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Leistung** durch In-Memory-Verarbeitung 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Skalierbarkeit** über viele Cluster-Knoten 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**Vielseitigkeit** durch ein einheitliches Ökosystem 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->**Sprachunterstützung** (u. a. Scala, Python, Java) 
+
+<!-- diagramm: d_spark_stack | layers | Spark SQL, Structured Streaming, MLlib und GraphX auf Spark Core -->
+<img src="figs/d_spark_stack.png" alt="" style="object-fit: scale-down" class="fragment" data-fragment-index="5">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Spark Core als Fundament
+
+Spark Core stellt zentrale Funktionen bereit:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Job-Verteilung und Scheduling 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Fault-Tolerance und Wiederherstellung 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Speicherverwaltung und Ausführungsmodell 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->APIs für verteilte Datenverarbeitung 
+
+<div class="fragment" data-fragment-index="5">
+
+Damit ist Spark Core die Basis für alle höheren Komponenten.
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## RDD: Das ursprüngliche Datenmodell
+
+**Resilient Distributed Dataset**:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Resilient: fehlertolerant 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Distributed: über Partitionen im Cluster verteilt 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Dataset: unveränderbare verteilte Datensammlung 
+
+<div class="fragment" data-fragment-index="4">
+
+Eigenschaften:
+
+- Transformationen werden parallel ausgeführt
+- Gut für Low-Level-Kontrolle
+- Höherer Entwicklungsaufwand als bei DataFrames
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## RDD: Das ursprüngliche Datenmodell
+
+<!-- diagramm: d_spark_rdd | nested | Partitionen eines RDD verteilt auf Worker 1 bis n -->
+<img src="figs/d_spark_rdd.png" alt="" style="object-fit: scale-down">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## DataFrames: Produktiver arbeiten
+
+DataFrames abstrahieren RDDs und ergänzen Schema-/Metadaten.
+
+Vorteile:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->SQL-nahe Arbeitsweise 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Einfachere Transformationen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Optimierungen durch Spark-Engine (Catalyst/Tungsten) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Höhere Produktivität im Team
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## DataFrames: Produktiver arbeiten
+
+<!-- diagramm: d_spark_dataframe | comparison | Dieselben Datensätze als RDD ohne Schema und als DataFrame mit typisierten Spalten -->
+<img src="figs/d_spark_dataframe.png" alt="" style="object-fit: scale-down">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Spark SQL
+
+Spark SQL ermöglicht strukturierte Analyse mit SQL und DataFrames.
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->SQL-Statements direkt auf verteilten Daten 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Einheitlicher Zugriff auf CSV, JSON, Parquet, u. a. 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Integration in bestehende BI-/DWH-Landschaften via JDBC/ODBC
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Spark SQL
+
+Typischer Nutzen:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Schnellere Entwicklung analytischer Pipelines 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Wiederverwendung vorhandener SQL-Kompetenzen im Team
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Spark Structured Streaming
+
+Structured Streaming bringt kontinuierliche Datenverarbeitung mit DataFrame-API.
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Einheitliches Programmiermodell für Batch und Streaming 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Verarbeitung von Event-Streams (z. B. Kafka) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Geeignet für Near-Real-Time-Use-Cases
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Spark Structured Streaming
+
+<!-- diagramm: d_spark_streaming | data flow | Event-Streams in Kafka-Topics, Structured Streaming verarbeitet sie als Micro-Batches je Zeitintervall -->
+<img src="figs/d_spark_streaming.png" alt="" style="object-fit: scale-down">
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## MLlib: Machine Learning in Spark
+
+Beispiele:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Klassifikation (z. B. Random Forest) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Regression 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Clustering (z. B. K-Means) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Recommender (ALS) 
+
+<div class="fragment" data-fragment-index="5">
+
+Zusätzlich:
+
+- Feature-Engineering
+- Pipelines
+- Modellpersistenz
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## GraphX
+
+GraphX unterstützt Graph-Analysen direkt im Spark-Ökosystem.
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Kombination aus ETL, Analyse und Graph-Algorithmen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Geeignet für Netzwerk- und Beziehungsdaten 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Nützlich für Fraud, Empfehlungssysteme, Knowledge Graphs
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Vorteile von Apache Spark
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->**Sehr hohe Verarbeitungsgeschwindigkeit** (insb. In-Memory) 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->**Breites Einsatzspektrum** in einer Plattform 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->**Gute Integrationen** zu Datenquellen und Cloud-Diensten 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->**Große Community** und stetige Weiterentwicklung
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Typische Anwendungsbereiche
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Große ETL-/ELT-Prozesse 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Datenaufbereitung für BI und Analytics 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Echtzeit-Streaming und Event-Verarbeitung 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Machine-Learning-Pipelines im produktiven Betrieb
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Spark vs. Hadoop (MapReduce)
+
+Kerngedanke:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Spark ist oft deutlich schneller in der Datenverarbeitung 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Hadoop bringt mit HDFS ein eigenes verteiltes Dateisystem mit 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->In moderner Cloud-Architektur wird Speicherung oft durch Objektspeicher ergänzt
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="smaller drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Spark vs. Hadoop (MapReduce)
+
+| | Spark | Hadoop MapReduce |
+|---|---|---|
+| **Verarbeitung** | In-Memory / Festplatte | Festplatte |
+| **Geschwindigkeit** | In-Memory bis zu 100-mal schneller als Hadoop | MapReduce liest und schreibt immer von der Festplatte, daher nicht so schnell |
+| **Einsetzbarkeit** | Batch, Streaming, Machine Learning und Graphverarbeitung | nur Batchverarbeitung |
+| **Real-Time-Fähigkeit** | ja, bis zu Millionen Einträge pro Sekunde | nein |
+| **Robustheit** | Fehlertoleranz vorhanden, Anwendung muss bei Fehlern nicht zwingend neu gestartet werden | Fehlertoleranz vorhanden, Anwendung muss bei Fehlern nicht zwingend neu gestartet werden |
+| **Sicherheit** | noch Verbesserungspotenzial im Vergleich zu Hadoop | bietet mehr in Bezug auf Sicherheit |
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Einordnung: Wo Spark stark ist
+
+Spark ist besonders stark, wenn:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->iterative Verarbeitung nötig ist 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->viele Transformationen auf großen Datenmengen laufen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Batch + Streaming + ML kombiniert werden sollen 
+
+<div class="fragment" data-fragment-index="4">
+
+Hadoop/HDFS bleibt relevant, wenn ein klassisches On-Prem-Storage-Ökosystem zentral ist
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Spark in der Cloud
+
+Cloud-Nutzung reduziert oft operativen Aufwand:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->weniger Cluster-Betriebsaufwand 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->schnellere Bereitstellung für Teams 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->bessere Elastizität für Lastspitzen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Databricks
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## PySpark
+
+PySpark ist die Python-Schnittstelle von Spark.
+
+Vorteile:
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Niedrige Einstiegshürde für Python-Teams 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Sehr gut für Data Science Workflows 
+
+<div class="fragment" data-fragment-index="3">
+
+Zu beachten:
+
+- Je nach Workload teils langsamer als Scala-Ansätze
+- Solides Verständnis für verteilte Verarbeitung bleibt essenziell
+
+</div>
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Erfolgsfaktoren
+
+1. &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Datenmodell und Partitionierung sauber designen 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="2" -->DataFrame/SQL bevorzugen, RDD nur gezielt einsetzen 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Monitoring und Kostenkontrolle von Anfang an mitdenken 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="4" -->Pipelines reproduzierbar bauen (CI/CD, Versionierung) 
+1. &shy;<!-- .element: class="fragment" data-fragment-index="5" -->ML-Lifecycle inkl. Feature-Management planen
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Grenzen und typische Stolperfallen
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Falsche Partitionierung kann Performance stark bremsen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Zu große Shuffle-Operationen führen zu Laufzeitproblemen 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->Streaming benötigt sauberes State- und Fehlerhandling 
+- &shy;<!-- .element: class="fragment" data-fragment-index="4" -->„Spark löst alles“ ist ein Anti-Pattern: Architektur bleibt entscheidend
+</div></script></section><section data-separator="
+?
+---
+?
+" data-separator-vertical="
+?
+--
+?
+" data-separator-notes="note:" data-markdown><script type="text/template"><!-- .slide: class="drop" template="" -->
+<div class="" style="position: absolute; left: 0px; top: 0px; height: 720px; width: 1280px; min-height: 720px; display: flex; flex-direction: column; align-items: center; justify-content: center" absolute="true">
+
+## Zusammenfassung
+
+Apache Spark ist eine starke, vielseitige Plattform für moderne Datenverarbeitung.
+
+- &shy;<!-- .element: class="fragment" data-fragment-index="1" -->Besonders wertvoll bei großem Datenvolumen und gemischten Workloads 
+- &shy;<!-- .element: class="fragment" data-fragment-index="2" -->Relevante Kernbausteine: Spark SQL, Structured Streaming, MLlib, GraphX 
+- &shy;<!-- .element: class="fragment" data-fragment-index="3" -->In Cloud-Umgebungen häufig der pragmatischste Weg zu skalierbaren Pipelines
+</div></script></section></section></div>
+    </div>
+
+    <script src="dist/reveal.js"></script>
+    <script src="plugin/notes/notes.js"></script>
+    <script src="plugin/markdown/markdown.js"></script>
+    <script src="plugin/obsidian-markdown.js"></script>
+    <script src="plugin/highlight/highlight.js"></script>
+
+    <script src="plugin/zoom/zoom.js"></script>
+    <script src="plugin/math/math.js"></script>
+    <script src="plugin/chart/chart.umd.js"></script>
+    <script src="plugin/chart/plugin.js"></script>
+    <script src="plugin/customcontrols/plugin.js"></script>
+
+
+    <script>
+        function extend() {
+            const target = {};
+            for (let i = 0; i < arguments.length; i++) {
+                const source = arguments[i];
+                for (const key in source) {
+                    if (source.hasOwnProperty(key)) {
+                        target[key] = source[key];
+                    }
+                }
+            }
+            return target;
+        }
+
+        function isLight(color) {
+            // normalize to rgb(a)
+            const optionEl = document.createElement("option");
+            optionEl.style.color = color;
+            const normalizedColor = optionEl.style.color;
+
+            const match = normalizedColor.match(/(\d+), (\d+), (\d+)/);
+            if (!match) return false;
+            const [, c_r, c_g, c_b] = match;
+
+            const brightness = ((c_r * 299) + (c_g * 587) + (c_b * 114)) / 1000;
+            return brightness > 155;
+        }
+
+        const bgColor = getComputedStyle(document.documentElement).getPropertyValue('--r-background-color').trim();
+
+        if (isLight(bgColor)) {
+            document.body.classList.add('has-light-background');
+        } else {
+            document.body.classList.add('has-dark-background');
+        }
+
+        // default options to init reveal.js
+        const defaultOptions = {
+            controls: true,
+            progress: true,
+            history: true,
+            center: true,
+            transition: 'default', // none/fade/slide/convex/concave/zoom
+            plugins: [
+                ObsidianMarkdown,
+                RevealHighlight,
+                RevealZoom,
+                RevealNotes,
+                RevealMath.KaTeX,
+                RevealChart,
+                RevealCustomControls,
+            ],
+            allottedTime: "120",
+
+            katex: {
+                local: 'plugin/math/katex',
+                extensions: ["mhchem"],
+            },
+            markdown: {
+                gfm: true,
+            },
+            customcontrols: {
+                controls: [
+                ]
+            },
+        };
+
+        if ( pageInIframe() ) {
+            defaultOptions.scrollActivationWidth = 5;
+        }
+
+        // options from URL query string
+        const queryOptions = Reveal().getQueryHash() || {};
+
+        const options = extend(defaultOptions, {"controls":true,"progress":true,"slideNumber":true,"center":true,"transition":"slide","transitionSpeed":"default","width":1280,"height":720,"margin":0.08}, queryOptions);
+    </script>
+
+    <script>
+      /**
+       * KaTeX Equation Numbering Note
+       *
+       * KaTeX maintains a global equation counter for \begin{equation} environments.
+       * When navigating between slides, reveal.js math plugin may re-render math, causing
+       * equation numbers to change randomly.
+       *
+       * Note: Regular $$ blocks don't have equation numbers - only \begin{equation} does.
+       *
+       * If you experience issues with equation numbers changing:
+       * Use manual \tag{} commands: \begin{equation}\tag{1} ... \end{equation}
+       */
+
+      Reveal.initialize(options);
+    </script>
+    <!-- created with Slides Extended reveal.html template -->
+</body>
+</html>
