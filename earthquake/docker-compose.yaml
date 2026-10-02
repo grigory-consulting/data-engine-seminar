@@ -111,7 +111,18 @@ services:
       - MINIO_DEFAULT_BUCKETS=prod
     ports:
       - "9000:9000"
-      - "9001:9001"
+
+  # Der Bitnami-Build von MinIO enthält keine eingebettete Console mehr; sie läuft als eigener Container
+  minio-console:
+    image: bitnamilegacy/minio-object-browser:2.0.2
+    restart: always
+    command: server --host 0.0.0.0 --port 9090
+    environment:
+      - CONSOLE_MINIO_SERVER=http://minio:9000
+    depends_on:
+      - minio
+    ports:
+      - "9001:9090"
 
   metabase:
     build:
