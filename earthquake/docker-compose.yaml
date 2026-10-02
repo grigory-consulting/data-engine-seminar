@@ -99,14 +99,16 @@ services:
     ports:
       - "5433:5432"
   minio:
-    image: minio/minio:RELEASE.2025-02-18T16-25-55Z
+    # minio/minio wurde 09/2026 von Docker Hub gelöscht; Bitnami-Legacy-Build mit fester Version
+    image: bitnamilegacy/minio:2025.7.23
     restart: always
     volumes:
-      - ./data:/data
+      - ./data:/bitnami/minio/data
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
-    command: server /data --console-address ":9001"
+      # Bucket für den Raw-Layer; data/ ist gitignored, ohne diese Zeile fehlt er in einem frischen Checkout
+      - MINIO_DEFAULT_BUCKETS=prod
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -117,7 +119,27 @@ services:
       dockerfile: ./metabase/Dockerfile
     container_name: metabase
     ports:
-      - "3000:3000"
+      - "3001:3000"
+    environment:
+      # Erlaubt das kurze Seminar-Passwort "admin" (Standard verlangt 6 Zeichen und eine Ziffer)
+      MB_PASSWORD_COMPLEXITY: weak
+      MB_PASSWORD_LENGTH: 5
+
+  # Einmal-Job: legt den Metabase-Admin an und bindet das DWH an (ersetzt den Setup-Assistenten)
+  metabase-setup:
+    build:
+      context: .
+      dockerfile: ./metabase/Dockerfile
+    depends_on:
+      - metabase
+    volumes:
+      - ./metabase/setup.sh:/setup.sh:ro
+    environment:
+      MB_URL: http://metabase:3000
+      MB_ADMIN_EMAIL: admin@example.com
+      MB_ADMIN_PASSWORD: admin
+    command: ["sh", "/setup.sh"]
+    restart: "no"
 
   postgres:
     image: postgres:13
